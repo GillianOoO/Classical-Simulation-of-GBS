@@ -38,11 +38,6 @@ double **W = NULL;
 #define max(a,b) (a>b? a: b)
 #define deltaZero(a) (a == 0? 0 : 1)
 
-string to_string(int num){
-	ostringstream oss;
-	oss<<num;
-	return oss.str();
-}
 
 /*binom{n}{k}:鑻<0鎴栬€呭ぇ浜巒杩斿洖0*/
 double Binom(int n, int k){
@@ -103,8 +98,8 @@ int SampleXWeight(double weight[], int m){
 
 
 /*factorial of n = n * (n-1) * ... * 2 * 1 */
-int Factorial(int n){
-    int ans=1;
+double Factorial(int n){
+    double ans=1;
     for (int i = 2; i <= n; i++) {
         ans *= i;
     }
@@ -116,18 +111,19 @@ int compare(const void *a, const void *b){
     return (*(int*)a - *(int*)b);
 }
 /*sum_{sigma in S_A} prod_{1\leq j \leq ta} [x_{sigma_i = x_B_i}]=Per (SM)*/
-void ConstructBipar(int x[], int a[], int b[], int t, int SM[][MAXY]){
-    
-    for (int i = 0; i < t; i ++) {
-        for (int j = 0; j < t; j ++) {
-            if (x[a[i]] == x[b[j]]) {
-                SM[i][j] = 1;
-            }
-            else SM[i][j] = 0;
-        }
-    }
-    
-}
+//void ConstructBipar(int x[], int a[], int b[], int t, int SM[][MAXY]){
+//    
+//    for (int i = 0; i < t; i ++) {
+//        for (int j = 0; j < t; j ++) {
+//            if (x[a[i]] == x[b[j]]) {
+//                SM[i][j] = 1;
+//            }
+//            else SM[i][j] = 0;
+//        }
+//    }
+//    
+//}
+
 
 
 map<string, Complex > mapHaf; // mapHaf<index, hafnian>
@@ -140,12 +136,12 @@ void ConserveHaf(int k, int n, int m, int x[]){
     /* All of 0, 2, 4, k - (k mod 2) - 2 combinations from (k - 2) and {k - 1, u}, where u in {0, ... , m - 1}
      k+1 elements: x_0, x_1, ... , x_k-1, x_k, where x_k in [m].
      */
-    int a = max(0, 2 * k - n);
+//    int a = max(0, 2 * k - n);
     int sa[SMAX];
     string sx;
     for (int j = 0; j < m; j ++) {
         x[k] = j;
-        for (int i = a; i <= k - 1; i += 2) {
+        for (int i = 0; i <= k - 1; i += 2) {
             // all of i-combinations from{x_1,...,x_{k - 2}}
             string bitx(i, 1);
             bitx.resize(k - 1, 0);
@@ -173,6 +169,44 @@ void ConserveHaf(int k, int n, int m, int x[]){
         }
     }
 }
+
+/* Compute the number of perfect matchings between xa and xb.*/
+double BiparPer(int x[], int a[], int b[], int ta){
+	if(ta == 0)return 1;
+	int ans;
+	int y[100], z[100];
+	
+	for(int i = 0; i < ta; i ++){
+		y[i] = x[a[i]];
+		z[i] = x[b[i]];
+	} 
+	qsort(y,ta,sizeof(int),compare);
+	qsort(z, ta, sizeof(int), compare);
+	ans = 1;
+	int temp, count[100];
+	temp = y[0];
+	int k = 0;
+	count[0] = 0;
+	for(int i = 0; i < ta; i++){
+		if(y[i] != z[i]){ /*There exists a element u in xa and not in xb, then per = 0 */
+			return 0;
+		}
+		if(y[i] == temp){  /* counting the outcoming times of i in xa. Per = the factorial of which. */
+			count[k]++;
+		}
+		else {
+			temp = y[i];
+			k++;
+			count[k]=1;
+		}
+	}
+	for(int i = 0; i < k + 1; i ++){
+		ans *= Factorial(count[i]);
+	}
+	return ans;
+}
+
+
 void GBS(int n, int m, int x[]){
     
     double weight[MAXX];
@@ -302,10 +336,17 @@ void GBS(int n, int m, int x[]){
                                                 seb[countteb ++] = sub[i];
                                             }
                                         }
-                                        ConstructBipar(x, sta, stb, ta, SW);
-                                        temp = Permanent(SW, ta);
-                                        
-                                        if(k + 1 - jb - ta == 0){
+										
+										/* If there exist u in x(sta) and not in x(stb), then Per(SW) = 0. */
+										temp = BiparPer(x,sta, stb, ta);
+
+//										ConstructBipar(x, sta, stb, ta, SW);
+//									    int flag = 0;
+//										if(temp != Permanent(SW, ta) && flag == 0){
+//											cout<<temp<<" "<<Permanent(SW, ta)<<endl;
+//											flag = 1;
+//										} 							        
+                                        if(temp == 0 || k + 1 - jb - ta == 0){
                                             z.real = 1;
                                             z.image = 0;
                                         }
@@ -318,6 +359,7 @@ void GBS(int n, int m, int x[]){
                                             if(it != mapHaf.end())z = it->second;
                                             else
                                             {
+                                            	cout<<"No ";
                                                 z = Hafnian(W, x, seb, k + 1 - jb - ta);
                                             }
                                         }
@@ -339,6 +381,7 @@ void GBS(int n, int m, int x[]){
                                         if(it != mapHaf.end())z = it->second;
                                         else
                                         {
+                                        	cout<<"No ";
                                             z = Hafnian(W, x, sea, k + 1 - ja - ta);
                                         }
                                         
@@ -369,6 +412,7 @@ void GBS(int n, int m, int x[]){
                                     z = it->second;
                                 }
                                 else {
+                                	cout<<"No ";
                                     z = Hafnian(W, x, sb, jb);
                                 }
                                 
@@ -393,6 +437,7 @@ void GBS(int n, int m, int x[]){
                             if(it != mapHaf.end())z = it->second;
                             else
                             {
+                            	cout<<"No ";
                                 z = Hafnian(W, x, sa, ja);
                             }
                             // cout<<sx<<" ";
@@ -420,11 +465,6 @@ void GBS(int n, int m, int x[]){
 int main() {
     // insert code here...
     int n,m;
-    printf("Please input the size of unitary matrix m: (We will get a m*m matrix.) \n");
-    cin>>m;
-    printf("Please input the size of photons \n");
-    cin>>n;
-    
     int x[MAXX];
     
     //double A[MAXX][MAXX];
@@ -439,26 +479,35 @@ int main() {
     for (int j = 0; j < MAX_M; j ++) {
         W[j] = new double[MAX_M * 2];
     }
-    
-    SchmidtOrth(m, A);/*Construct m*2m matrix A */
-    SymmetricM(A, m);/* W = A * A^t  */
-    
-    FILE *fexp;
+    printf("Please input the size of unitary matrix m: (We will get a m*m matrix.) \n");
+    cin>>m;
+    printf("Please input the size of photons \n");
+    cin>>n;
+
+//    FILE *fexp;
 //    fexp = fopen("ExpTime.txt", "w+");
-//    
+    
     t = clock();
-//    for(int n = 2; n <=14; n +=2){
-//	m = n * n;
-//	SchmidtOrth(m, A);
-//	SymmetricM(A, m);
-//	t = clock();
-//	for(int i = 0; i < 300; i ++){
-//		GBS(n, m, x);
-//	}	
-// 	t = clock() - t;
-//	fprintf(fexp,"%lf\n", ((double)t)/300/CLOCKS_PER_SEC);
-//	printf("%d: %lf\n", n, (double)(t)/300/CLOCKS_PER_SEC);
+//    for(int n = 2; n <= 14; n +=2){
+//		m = n * n;
+//		SchmidtOrth(m, A);
+//		SymmetricM(A, m);
+//		t = clock();
+//		int Nt = 300;
+//		for(int i = 0; i < Nt; i ++){
+//			GBS(n, m, x);
+//			qsort(x,n, sizeof(int), compare);
+//		//	cout<<n<<", "<<m<<"\t";
+//		//	for(int j = 0; j < n; j ++)cout<<x[j]<<" ";
+//		//	cout<<endl;
+//		}	
+// 		t = clock() - t;
+//		fprintf(fexp,"%lf\n", ((double)t)/Nt/CLOCKS_PER_SEC);
+//		printf("%d, %d: %lf\n", n,m, (double)(t)/Nt/CLOCKS_PER_SEC);
 //    }
+
+	SchmidtOrth(m, A);
+	SymmetricM(A, m);
     GBS(n,m,x);
     qsort(x, n, sizeof(int), compare);
     t = clock() - t;
