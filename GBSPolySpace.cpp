@@ -3,8 +3,16 @@
 //  GBSNoncollision
 //
 //  Created by WuBujiao on 6/15/18.
-//  Copyright © 2018 WuBujiao. All rights reserved.
+//  Copyright 漏 2018 WuBujiao. All rights reserved.
 //
+
+/**
+Basic classical gaussian boson sampling algorithm.
+The sampling process is in GBS.
+
+
+**/
+
 #include "UnitaryConstruct.hpp"
 #include "DirectSimulate.hpp"
 #include "Hafnian.hpp"
@@ -34,7 +42,7 @@ string to_string(int num){
     oss<<num;
     return oss.str();
 }
-/*binom{n}{k}:若k<0或者大于n返回0*/
+/*binom{n}{k}:鑻<0鎴栬€呭ぇ浜巒杩斿洖0*/
 int Binom(int n, int k){
     int ans = 1;
     // int dec = 1;
@@ -101,21 +109,57 @@ int compare(const void *a, const void *b){
     return (*(int*)a - *(int*)b);
 }
 /*sum_{sigma in S_A} prod_{1\leq j \leq ta} [x_{sigma_i = x_B_i}]=Per (SM)*/
-void ConstructBipar(int x[], int a[], int b[], int t, int SM[][50]){
-    
-    for (int i = 0; i < t; i ++) {
-        for (int j = 0; j < t; j ++) {
-            if (x[a[i]] == x[b[j]]) {
-                SM[i][j] = 1;
-            }
-            else SM[i][j] = 0;
-        }
-    }
-    
+//void ConstructBipar(int x[], int a[], int b[], int t, int SM[][MAXY]){
+//    
+//    for (int i = 0; i < t; i ++) {
+//        for (int j = 0; j < t; j ++) {
+//            if (x[a[i]] == x[b[j]]) {
+//                SM[i][j] = 1;
+//            }
+//            else SM[i][j] = 0;
+//        }
+//    }
+//    
+//}
+
+/* Compute the number of perfect matchings between xa and xb.*/
+double BiparPer(int x[], int a[], int b[], int ta){
+	if(ta == 0)return 1;
+	int ans;
+	int y[100], z[100];
+	
+	for(int i = 0; i < ta; i ++){
+		y[i] = x[a[i]];
+		z[i] = x[b[i]];
+	} 
+	qsort(y,ta,sizeof(int),compare);
+	qsort(z, ta, sizeof(int), compare);
+	ans = 1;
+	int temp, count[100];
+	temp = y[0];
+	int k = 0;
+	count[0] = 0;
+	for(int i = 0; i < ta; i++){
+		if(y[i] != z[i]){ /*There exists a element u in xa and not in xb, then per = 0 */
+			return 0;
+		}
+		if(y[i] == temp){  /* counting the outcoming times of i in xa. Per = the factorial of which. */
+			count[k]++;
+		}
+		else {
+			temp = y[i];
+			k++;
+			count[k]=1;
+		}
+	}
+	for(int i = 0; i < k + 1; i ++){
+		ans *= Factorial(count[i]);
+	}
+	return ans;
 }
 
 
-map<string, Complex > mapHaf; // mapHaf<index, hafnian>
+//map<string, Complex > mapHaf; // mapHaf<index, hafnian>
 
 
 /*check of the correctness.*/
@@ -169,7 +213,7 @@ void GBS(int n, int m, int x[]){
                     string bitsa(ja, 1);
                     bitsa.resize(k + 1, 0);
                     
-                    int sa[MAXX],sb[MAXX], sua[MAXX],sub[MAXX],sea[MAXX],seb[MAXX], sta[MAXX], stb[MAXX], SW[50][50];
+                    int sa[MAXX],sb[MAXX], sua[MAXX],sub[MAXX],sea[MAXX],seb[MAXX], sta[MAXX], stb[MAXX], SW[MAXY][MAXY];
                     int counta, countb, countea, counteb, countta, counttb,counttea, countteb, temp;
                     
                     // a = max((k + 1) % 2, 3 * (k + 1) - (ja + jb) - n) ;
@@ -178,7 +222,7 @@ void GBS(int n, int m, int x[]){
                     //   #pragma omp parallel do
                     do{
                         string sx;
-                        map< string, Complex>::iterator it;
+            //            map< string, Complex>::iterator it;
                         counta = 0;
                         countta = 0;
                         
@@ -256,9 +300,14 @@ void GBS(int n, int m, int x[]){
                                                 seb[countteb ++] = sub[i];
                                             }
                                         }
-                                        ConstructBipar(x, sta, stb, ta, SW);
-                                        temp = Permanent(SW, ta);
-                                        z = Hafnian(W, x, seb, k + 1 - jb - ta);
+                                       // ConstructBipar(x, sta, stb, ta, SW);
+									//	temp = Permanent(SW, ta);
+										temp = BiparPer(x,sta, stb, ta);
+                                        if(temp == 0){
+                                        	z.real = 0;
+                                        	z.image = 0;
+										}
+										else z = Hafnian(W, x, seb, k + 1 - jb - ta);
                                         
                                         z.real = z.real * temp;
                                         z.image = z.image * temp;
@@ -321,6 +370,7 @@ int main() {
     int n,m;
     int x[MAXX];
     //double A[MAXX][MAXX];
+    
     double **A = new double *[MAXW];
     for (int j = 0; j < MAXW; j ++){
         A[j] = new double [MAXW * 2];
@@ -329,42 +379,54 @@ int main() {
     for (int j = 0; j < MAXW; j ++){
         W[j] = new double[MAXW * 2];
     }
-    FILE * fp;
-    fp = fopen("timeSec.txt", "w+");
-    map<vector< int >, int > basisDis;
-    //   for(int n = 2; n <= 10; n += 2){
-  //  printf("Please input the size of unitary matrix m: (We will get a m*m matrix.) \n");
-  //  cin>>m;
- //   printf("Please input the size of photons \n");
- //   cin>>n;
-    //   m = n * n ;
-  //  SchmidtOrth(m, A);/* A */
-  //  SymmetricM(A, m);/*W = A * A^t  */
-    //   double t = omp_get_wtime();
+    printf("Please input the size of unitary matrix m: (We will get a m*m matrix.) \n");
+    cin>>m;
+    printf("Please input the size of photons \n");
+    cin>>n;
+   	SchmidtOrth(m, A);
+	SymmetricM(A, m);
+ //   FILE * fp;
+//    fp = fopen("timeSec.txt", "w+");
+
     clock_t t = clock();
- 
-    for(int n = 14; n <= 14; n += 2){
-		m = n * n;
-		SchmidtOrth(m, A);
-		SymmetricM(A, m);
-		t = clock();
-        for(int i = 0; i < 1; i ++){
-			GBS(n, n * n, x);
-		}
-		t = clock() - t;
-	//	cout<<n<<": "<<((float)t)/CLOCKS_PER_SEC/2<<endl;
-	//	fprintf(fp, "%f\n",((float)t)/CLOCKS_PER_SEC/2);
-    }
-   // t = clock()- t;  
-//    fprintf(fp,"%f\n", (float)(t)/CLOCKS_PER_SEC);
-   // cout<<n<<" photons time: "<<(float(t))/CLOCKS_PER_SEC<<"\nThe sample obtained by classical simulation of GBS."<<endl;
-    
-    cout<<"The number of photons are "<<n<<endl;
+    GBS(n,m,x);
+    qsort(x, n, sizeof(int), compare);
+    t = clock() - t;
+    cout<<"The sample obtained by classical simulation of GBS."<<endl;
     for (int i = 0; i < n; i++) {
-       cout<<x[i]<<" ";
+        cout<<x[i]<<" ";
     }
     cout<<endl;
-   fclose(fp);
+    
+    printf("Time : %f\n",((float)t)/CLOCKS_PER_SEC);
+//    int T = 300;
+//    
+//    clock_t start, end;
+//   
+//    for(int n = 2; n <= 12; n += 2){
+//
+//	m = n * n;
+////	cout<<m<<endl;
+//	SchmidtOrth(m, A);
+//	SymmetricM(A, m);
+//	start = time(NULL);
+//	t = clock();
+//        for(int i = 0; i < T; i ++){
+//		GBS(n, m, x);
+//	}
+//	t = clock() - t;
+//	end = time(NULL);
+////	cout<<n<<": "<<difftime(end, start)<<endl;
+//	cout<<n<<", "<<m<<": "<<((float)t)/CLOCKS_PER_SEC/T<<endl;
+//	fprintf(fp, "%f\n", ((float)t)/CLOCKS_PER_SEC/T);
+//    }
+    
+   // cout<<"The number of photons are "<<n<<endl;
+   // for (int i = 0; i < n; i++) {
+   //     cout<<x[i]<<" ";
+   // }
+   // cout<<endl;
+//   fclose(fp);
     for (int j = 0; j < MAXW; j ++){
         delete [] W[j];
     }
